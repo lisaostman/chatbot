@@ -1,38 +1,41 @@
-const chatContainer = document.getElementById('chat-container');
-const userInput = document.getElementById('user-input');
-const sendButton = document.getElementById('send-button');
+const express = require('express');
+const fetch = require('node-fetch');
+const app = express();
+const port = 3000;
 
-sendButton.addEventListener('click', sendMessage);
+// Parse JSON body
+app.use(express.json());
 
-function sendMessage() {
-  const userMessage = userInput.value.trim();
-  if (userMessage !== '') {
-    displayMessage(userMessage, 'user');
-    userInput.value = '';
+// Handle POST request to '/api/chatgpt'
+app.post('/api/chatgpt', (req, res) => {
+  const message = req.body.message;
 
-    // Make an API call to ChatGPT endpoint
-    fetch('/api/chatgpt', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ message: userMessage }),
+  // Make API call to ChatGPT
+  fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer YOUR_API_KEY', // Replace with your ChatGPT API key
+    },
+    body: JSON.stringify({
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: message },
+      ],
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      const botReply = data.choices[0].message.content;
+      res.json({ message: botReply });
     })
-      .then((response) => response.json())
-      .then((data) => {
-        const botMessage = data.message;
-        displayMessage(botMessage, 'bot');
-      })
-      .catch((error) => {
-        console.log('Error:', error);
-      });
-  }
-}
+    .catch((error) => {
+      console.log('Error:', error);
+      res.status(500).json({ error: 'An error occurred' });
+    });
+});
 
-function displayMessage(message, sender) {
-  const messageElement = document.createElement('div');
-  messageElement.classList.add('message', sender);
-  messageElement.textContent = message;
-  chatContainer.appendChild(messageElement);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
+// Start the server
+app.listen(port, () => {
+  console.log(`Server listening at http://localhost:${port}`);
+});
